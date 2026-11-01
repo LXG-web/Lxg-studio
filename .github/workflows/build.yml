@@ -26,6 +26,27 @@ jobs:
 
           unzip -o "$ZIP" -d project
 
+      - name: Detect Gradle Version
+        id: gradle_version
+        run: |
+          FILE=$(find project -name gradle-wrapper.properties | head -n 1)
+
+          if [ -z "$FILE" ]; then
+            echo "ERROR: gradle-wrapper.properties not found"
+            exit 1
+          fi
+
+          URL=$(grep '^distributionUrl=' "$FILE" | cut -d= -f2-)
+          VERSION=$(echo "$URL" | grep -oE 'gradle-[0-9][0-9.]*-(bin|all)\.zip' | sed -E 's/gradle-([0-9.]+)-(bin|all)\.zip/\1/')
+
+          if [ -z "$VERSION" ]; then
+            echo "ERROR: Could not detect Gradle version"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected Gradle version: $VERSION"
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -34,23 +55,20 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ steps.gradle_version.outputs.version }}
 
-      - name: Find Project and Build APK
+      - name: Build APK
         run: |
-          GRADLEW=$(find project -type f -name gradlew | head -n 1)
+          ROOT=$(find project -name settings.gradle.kts -o -name settings.gradle | head -n 1)
 
-          if [ -z "$GRADLEW" ]; then
-            echo "ERROR: gradlew not found in ZIP"
-            find project -maxdepth 5 -type f | head -100
+          if [ -z "$ROOT" ]; then
+            echo "ERROR: Gradle project not found"
             exit 1
           fi
 
-          PROJECT_DIR=$(dirname "$GRADLEW")
-          echo "Building project from: $PROJECT_DIR"
-
-          cd "$PROJECT_DIR"
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          cd "$(dirname "$ROOT")"
+          gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -58,3 +76,4 @@ jobs:
           name: LXG-Studio-APK
           path: project/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
