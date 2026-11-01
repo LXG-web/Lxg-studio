@@ -1,45 +1,46 @@
 
 
-name: LXG Studio APK Workflow
+name: Build LXG Studio APK
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-  workflow_dispatch:
 
 jobs:
-  apk:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract APK ZIP
+      - name: Extract Project
         run: |
-          mkdir -p extracted apk-output
-          ZIP=$(find . -type f -iname "*.zip" ! -path "./.git/*" | head -n 1)
+          mkdir project
+          ZIP=$(find . -maxdepth 2 -type f -iname "*.zip" ! -path "./.git/*" | head -n 1)
+          unzip -o "$ZIP" -d project
+          echo "Project extracted"
+          ls -la project
 
-          if [ -z "$ZIP" ]; then
-            echo "ZIP file not found"
-            exit 1
-          fi
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-          unzip -o "$ZIP" -d extracted
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-          APK=$(find extracted -type f -iname "*.apk" | head -n 1)
+      - name: Build APK
+        run: |
+          cd project
+          chmod +x gradlew
+          ./gradlew assembleDebug
 
-          if [ -z "$APK" ]; then
-            echo "No APK found inside ZIP. Files found:"
-            find extracted -type f
-            exit 1
-          fi
-
-          cp "$APK" apk-output/LXG-Studio.apk
-
-      - name: Upload APK Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: LXG-Studio-APK
-          path: apk-output/*.apk
+          path: project/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
