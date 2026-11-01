@@ -30,22 +30,9 @@ jobs:
         id: gradle_version
         run: |
           FILE=$(find project -name gradle-wrapper.properties | head -n 1)
-
-          if [ -z "$FILE" ]; then
-            echo "ERROR: gradle-wrapper.properties not found"
-            exit 1
-          fi
-
           URL=$(grep '^distributionUrl=' "$FILE" | cut -d= -f2-)
-          VERSION=$(echo "$URL" | grep -oE 'gradle-[0-9][0-9.]*-(bin|all)\.zip' | sed -E 's/gradle-([0-9.]+)-(bin|all)\.zip/\1/')
-
-          if [ -z "$VERSION" ]; then
-            echo "ERROR: Could not detect Gradle version"
-            exit 1
-          fi
-
+          VERSION=$(echo "$URL" | grep -oE 'gradle-[0-9.]+-(bin|all)\.zip' | sed -E 's/gradle-([0-9.]+)-(bin|all)\.zip/\1/')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Detected Gradle version: $VERSION"
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -57,6 +44,19 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: ${{ steps.gradle_version.outputs.version }}
+
+      - name: Generate Debug Keystore
+        run: |
+          keytool -genkeypair \
+            -v \
+            -keystore project/debug.keystore \
+            -storepass android \
+            -alias androiddebugkey \
+            -keypass android \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Build APK
         run: |
@@ -76,4 +76,3 @@ jobs:
           name: LXG-Studio-APK
           path: project/**/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-
