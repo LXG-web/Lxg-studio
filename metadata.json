@@ -1,6 +1,0 @@
-{
-  "name": "LXG Studio",
-  "description": "Professional mobile live streaming studio with camera, screen capture, scene management, RTMP destinations, and secure stream key encryption.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
